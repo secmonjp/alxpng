@@ -19,6 +19,9 @@ parser.add_argument("-mode", required=True,
 
 parser.add_argument("-host", required=True)
 
+parser.add_argument("-path", default="/",
+                    help="Target path for HTTP/HTTPS (default: /)")
+
 parser.add_argument("-port", type=int)
 
 parser.add_argument("-threads", type=int, default=100)
@@ -31,6 +34,7 @@ args = parser.parse_args()
 
 MODE = args.mode
 HOST = args.host
+PATH = args.path
 PORT = args.port
 THREADS = args.threads
 DURATION = args.duration
@@ -66,16 +70,25 @@ def get_headers():
 # =====================
 # HTTP / HTTPS
 # =====================
+
 def http_worker():
 
     global success, failed, total
 
     proto = "https" if MODE == "https" else "http"
-    url = f"{proto}://{HOST}"
 
     while running:
 
         try:
+            # random query (cache busting)
+            rand_id = random.randint(100000, 999999)
+
+            # normalize path
+            clean_path = PATH if PATH.startswith("/") else "/" + PATH
+
+            # build URL
+            url = f"{proto}://{HOST}{clean_path}?{rand_id}"
+
             req = urllib.request.Request(
                 url,
                 headers=get_headers()
@@ -85,9 +98,11 @@ def http_worker():
 
             start = time.time()
 
-            with urllib.request.urlopen(req,
-                                        timeout=5,
-                                        context=ctx) as res:
+            with urllib.request.urlopen(
+                req,
+                timeout=5,
+                context=ctx
+            ) as res:
 
                 code = res.getcode()
 
@@ -109,7 +124,9 @@ def http_worker():
                 total += 1
                 failed += 1
 
-        time.sleep(random.uniform(0.01, 0.05))
+        # tiny random delay
+        time.sleep(random.uniform(0.02, 0.08))
+
 
 
 # =====================
@@ -225,6 +242,9 @@ def main():
 
     print("Mode     :", MODE)
     print("Host     :", HOST)
+
+    if MODE in ["http", "https"]:
+        print("Path     :", PATH)
 
     if PORT:
         print("Port     :", PORT)
