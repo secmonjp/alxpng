@@ -141,7 +141,8 @@ func main() {
 // TRANSLATED PYTHON TARGET WORKERS
 // ==========================================
 
-func httpWorker(mode, port int, host, path string, payload []byte) {
+// THE FIX: Changed type of 'mode' from int to string to match the main routing mapping layout
+func httpWorker(mode string, port int, host, path string, payload []byte) {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
