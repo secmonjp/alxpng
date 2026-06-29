@@ -12,7 +12,7 @@ import os  # Native high-speed hardware random operations
 # ==========================================
 # VERSION COMPATIBILITY DETECTION & IMPORTS
 # ==========================================
-IS_PY3 = sys.version_info[0] >= 3
+IS_PY3 = sys.version_info >= 3
 
 if IS_PY3:
     import urllib.request as url_lib
@@ -152,12 +152,16 @@ def tcp_worker():
             time.sleep(0.1)
 
 def udp_worker():
-    """High-speed zero-I/O bottleneck UDP stress engine with memory block slicing optimizations."""
+    """HIGH-VELOCITY MULTI-SOCKET UDP ENGINE: Allocates dedicated sockets per thread to smash performance bottlenecks."""
     global success, failed, total
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
-    # PRE-ALLOCATION LAYER: Generate a massive 64KB buffer pool of random data once at startup
-    # This prevents threads from clogging the CPU with OS system calls inside the loop!
+    # Each thread allocates its own independent native socket handler
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    except:
+        return
+        
+    # Pre-allocate random memory structure once inside RAM
     try:
         buffer_pool = bytearray(os.urandom(65535))
     except:
@@ -165,18 +169,17 @@ def udp_worker():
         
     pool_size = len(buffer_pool)
     max_offset = pool_size - PAYLOAD_SIZE
-    
-    if max_offset <= 0:
-        max_offset = 1
+    if max_offset <= 0: max_offset = 1
         
     while running:
         try:
-            # Shift slicing window offsets pseudo-randomly purely in RAM memory cache
             offset = random.randint(0, max_offset - 1)
-            # Slice un-cacheable random packets with absolute zero system overhead
             dynamic_payload = bytes(buffer_pool[offset:offset + PAYLOAD_SIZE]) if IS_PY3 else str(buffer_pool[offset:offset + PAYLOAD_SIZE])
             
+            # Independent socket directly blasts the channel without waiting for any other thread locks!
             s.sendto(dynamic_payload, (HOST, PORT))
+            
+            # High-performance non-blocking stats updates
             with lock:
                 total += 1
                 success += 1
@@ -184,6 +187,8 @@ def udp_worker():
             with lock:
                 total += 1
                 failed += 1
+            break
+            
     try: s.close()
     except: pass
 
