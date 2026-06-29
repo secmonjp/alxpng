@@ -12,7 +12,8 @@ import os  # Native high-speed hardware random operations
 # ==========================================
 # VERSION COMPATIBILITY DETECTION & IMPORTS
 # ==========================================
-IS_PY3 = sys.version_info >= 3
+# UNIVERSAL FIX: Extract index 0 explicitly to prevent legacy Python 2 interpreter panics
+IS_PY3 = sys.version_info[0] >= 3
 
 if IS_PY3:
     import urllib.request as url_lib
